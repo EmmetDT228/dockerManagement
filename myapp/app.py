@@ -37,7 +37,7 @@ DELETE /images                      Delete all images
 def containers_index():
     """
     List all containers
- 
+
     curl -s -X GET -H 'Accept: application/json' http://localhost:8080/containers | python -mjson.tool
     curl -s -X GET -H 'Accept: application/json' http://localhost:8080/containers?state=running | python -mjson.tool
 
@@ -69,25 +69,28 @@ def images_index():
 #######################
 @app.route('/containers/<id>', methods=['GET'])
 def containers_show(id):
-    	"""
-    	Inspect specific container
+	"""
+	Inspect specific container
 
-    	"""
+	"""
 
-	output = docker('ls',id)
-    	resp = json.dumps(docker_ps_to_array(output))
-    	return Response(response=resp, mimetype="application/json")
+	output = docker('inspect' , id)
+	resp = output
+	return Response(response=resp, mimetype="application/json")
 
+########################
 @app.route('/containers/<id>/logs', methods=['GET'])
 def containers_log(id):
 	"""
     	Dump specific container logs
 
     	"""
-    	resp = ''
-    	return Response(response=resp, mimetype="application/json")
 
+	output = docker_logs_to_object(id , docker('logs' , id))
+	resp = json.dumps(output)
+	return Response(response=resp, mimetype="application/json")
 
+#########################
 @app.route('/images/<id>', methods=['DELETE'])
 def images_remove(id):
 	"""
@@ -97,15 +100,18 @@ def images_remove(id):
 	resp = '{"id": "%s"}' % id
 	return Response(response=resp, mimetype="application/json")
 
+##########################
 @app.route('/containers/<id>', methods=['DELETE'])
 def containers_remove(id):
 	"""
 	Delete a specific container - must be already stopped/killed
 
 	"""
-	resp = ''
+	docker('rm' , id)
+	resp = '("id": "%s"}' % id
 	return Response(response=resp, mimetype="application/json")
 
+#####
 @app.route('/containers', methods=['DELETE'])
 def containers_remove_all():
 	"""
@@ -115,17 +121,19 @@ def containers_remove_all():
 	resp = ''
 	return Response(response=resp, mimetype="application/json")
 
+
+#####
 @app.route('/images', methods=['DELETE'])
 def images_remove_all():
 	"""
 	Force remove all images - dangrous!
 
 	"""
- 
+
 	resp = ''
 	return Response(response=resp, mimetype="application/json")
 
-
+########################
 @app.route('/containers', methods=['POST'])
 def containers_create():
 	"""
@@ -142,7 +150,7 @@ def containers_create():
 	id = docker(*(args + (image,)))[0:12]
 	return Response(response='{"id": "%s"}' % id, mimetype="application/json")
 
-
+################################
 @app.route('/images', methods=['POST'])
 def images_create():
 	"""
@@ -151,13 +159,14 @@ def images_create():
 	curl -H 'Accept: application/json' -F file=@Dockerfile http://localhost:8080/images
 
 	"""
+
 	dockerfile = request.files['file']
+	dockerfile.save('Dockerfile')
+	docker('build','-t','imagepost','.')
+	images = docker_images_to_array(docker('images'))
+	#resp = '{"id":"%s"}' % images[0]['id']
 
-	resp = ''
 	return Response(response=resp, mimetype="application/json")
-
-
-
 
 @app.route('/containers/<id>', methods=['PATCH'])
 def containers_update(id):
@@ -187,7 +196,10 @@ def images_update(id):
 	curl -s -X PATCH -H 'Content-Type: application/json' http://localhost:8080/images/7f2619ed1768 -d '{"tag": "test:1.0"}'
 
 	"""
-	resp = ''
+	body = request.get_json(force=True)
+	tag = body['tag']
+	docker('tag', id, tag)
+	resp = '{"id": "%s"}' % id
 	return Response(response=resp, mimetype="application/json")
 
 
@@ -197,8 +209,8 @@ def docker(*args):
 		cmd.append(sub)
 	process = Popen(cmd, stdout=PIPE, stderr=PIPE)
 	stdout, stderr = process.communicate()
-	if stderr.startswith('Error'):
-		print 'Error: {0} -> {1}'.format(' '.join(cmd), stderr)
+	#if stderr.startswith('Error'):
+		#print 'Error: {0} -> {1}'.format(' '.join(cmd), stderr)
 	return stderr + stdout
 
 #
@@ -233,7 +245,7 @@ def docker_logs_to_object(id, output):
 
 #
 # Parses the output of a Docker image command to a python List
-# 
+#
 def docker_images_to_array(output):
 	all = []
 	for c in [line.split() for line in output.splitlines()[1:]]:

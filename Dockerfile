@@ -10,8 +10,8 @@ Label org.label-schema.group="monitoring"
 # Update the sources list
 RUN apt-get update
 # Install Python and Basic Python Tools
-RUN apt-get install -y python3 python3-pip mysql-client libmysqlclient-dev
-#copy app.py into /app folder 
+RUN apt-get install -y python3 python3-pip
+#copy app.py into /app folder
 ADD /myapp /myapp
 
 # Copy the application folder inside the container
@@ -28,4 +28,4 @@ WORKDIR /myapp
 # Set the default command to execute
 # when creating a new container
 # i.e. using Flask to serve the application
-CMD python conserve.py
+CMD python3 app.py
