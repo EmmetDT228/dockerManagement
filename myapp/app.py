@@ -164,7 +164,7 @@ def images_create():
 	dockerfile.save('Dockerfile')
 	docker('build','-t','imagepost','.')
 	images = docker_images_to_array(docker('images'))
-	#resp = '{"id":"%s"}' % images[0]['id']
+	resp = '{"id":"%s"}' % images[0]['id']
 
 	return Response(response=resp, mimetype="application/json")
 
